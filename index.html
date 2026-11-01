@@ -3,207 +3,115 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AroXi Chat</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#0b1220;color:white;font-family:Arial}
-header{background:#111c30;padding:20px;color:#67e8f9;font-size:25px;font-weight:bold}
-main{max-width:900px;margin:auto;padding:18px}
-.panel{background:#17243a;padding:18px;border-radius:15px;margin-bottom:15px}
-input{width:100%;padding:13px;margin:7px 0;border:1px solid #354660;border-radius:9px;background:#0b1729;color:white}
-button{padding:12px 17px;background:#06a6ba;color:white;border:0;border-radius:9px;margin:4px;font-weight:bold}
-.hidden{display:none!important}
-.grid{display:grid;grid-template-columns:1fr 2fr;gap:12px}
-#messages{height:45vh;overflow:auto;background:#0b1729;padding:12px;border-radius:10px}
-.msg{background:#263b58;padding:10px;border-radius:10px;margin:8px 0;overflow-wrap:anywhere}
-.mine{background:#075985;text-align:right}
-.user{padding:12px;background:#263b58;margin:8px 0;border-radius:9px;cursor:pointer}
-.row{display:flex;gap:5px}
-.row input{flex:1}
-@media(max-width:650px){.grid{grid-template-columns:1fr}}
+body{margin:0;background:#090d18;color:white;font-family:Arial,sans-serif}
+header{padding:24px;background:linear-gradient(120deg,#075bdb,#c51d55);font-size:26px;font-weight:bold}
+main{max-width:500px;margin:auto;padding:20px}
+.card{background:#151d30;border:1px solid #26344e;border-radius:18px;padding:20px;margin-top:18px}
+input,button{width:100%;padding:14px;border:0;border-radius:10px;margin:7px 0;font-size:16px}
+input{background:#26334b;color:white}
+button{background:#1267e9;color:white;font-weight:bold}
+.secondary{background:#b91e4c}
+#app{display:none}
+.msg{background:#26334b;padding:12px;border-radius:12px;margin:9px 0}
+small{color:#9aabc7}
 </style>
 </head>
 <body>
-<header>✦ AroXi Chat</header>
+<header>💬 AroXi Chat</header>
 <main>
-<section id="auth" class="panel">
+<section id="login" class="card">
 <h2>Hoş geldin!</h2>
+<p>AroXi Chat'e giriş yap veya hesap oluştur.</p>
 <input id="email" type="email" placeholder="E-posta">
 <input id="password" type="password" placeholder="Şifre">
-<input id="username" placeholder="Kullanıcı adı (kayıtta)">
-<button onclick="register()">Kayıt Ol</button>
-<button onclick="login()">Giriş Yap</button>
-<p id="error"></p>
+<button onclick="register()">Hesap oluştur</button>
+<button class="secondary" onclick="loginUser()">Giriş yap</button>
+<p id="status"></p>
 </section>
-
-<section id="app" class="hidden">
-<div class="panel">
-<span id="myName"></span>
-<button onclick="logout()">Çıkış</button>
+<section id="app">
+<div class="card">
+<h2 id="welcome">AroXi Chat</h2>
+<input id="friend" placeholder="Arkadaşının e-postası">
+<button onclick="openChat()">Sohbeti aç</button>
+<button class="secondary" onclick="logout()">Çıkış yap</button>
 </div>
-<div class="grid">
-<div class="panel">
-<h3>Kişi Bul</h3>
-<input id="search" placeholder="Kullanıcı adı">
-<button onclick="findUser()">Ara</button>
-<div id="people"></div>
-<h3>Sohbetler</h3>
-<div id="chats"></div>
-</div>
-<div class="panel">
-<h3 id="chatTitle">Sohbet seç</h3>
+<div class="card">
+<h3 id="chatTitle">Sohbet</h3>
 <div id="messages"></div>
-<div class="row">
-<input id="message" placeholder="Mesaj yaz..." disabled>
+<input id="message" placeholder="Mesajını yaz...">
 <button onclick="sendMessage()">Gönder</button>
-</div>
-</div>
 </div>
 </section>
 </main>
-
 <script type="module">
-import {initializeApp}
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,onAuthStateChanged,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getFirestore,collection,addDoc,query,where,orderBy,onSnapshot,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-import {
-getAuth,createUserWithEmailAndPassword,
-signInWithEmailAndPassword,signOut,onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
-import {
-getFirestore,doc,setDoc,getDoc,collection,
-query,where,getDocs,addDoc,onSnapshot,orderBy,serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-const firebaseConfig = {
+const firebaseConfig={
 apiKey:"AIzaSyA4L9vTAZHQYkPweCXATplEaRIIEZumyVg",
 authDomain:"aroxi-chat.firebaseapp.com",
 projectId:"aroxi-chat",
 storageBucket:"aroxi-chat.firebasestorage.app",
 messagingSenderId:"707142258691",
-appId:"1:707142258691:web:e748022ad060c8b62a7e36",
-measurementId:"G-3411TT3F2J"
+appId:"1:707142258691:web:e748022ad060c8b62a7e36"
 };
-
 const app=initializeApp(firebaseConfig);
 const auth=getAuth(app);
 const db=getFirestore(app);
-
-let me=null,activeChat=null,stopMessages=null;
-
-const $=id=>document.getElementById(id);
+let currentFriend="";
+let unsubscribe=null;
 
 window.register=async()=>{
-try{
-const username=$("username").value.trim().toLowerCase();
-const cred=await createUserWithEmailAndPassword(
-auth,$("email").value,$("password").value);
-await setDoc(doc(db,"users",cred.user.uid),{
-uid:cred.user.uid,
-username:username,
-createdAt:serverTimestamp()
-});
-}catch(e){$("error").textContent=e.message}
+try{await createUserWithEmailAndPassword(auth,email.value,password.value);status.textContent="Hesap oluşturuldu!";}
+catch(e){status.textContent=e.message;}
 };
-
-window.login=async()=>{
-try{
-await signInWithEmailAndPassword(
-auth,$("email").value,$("password").value);
-}catch(e){$("error").textContent=e.message}
+window.loginUser=async()=>{
+try{await signInWithEmailAndPassword(auth,email.value,password.value);}
+catch(e){status.textContent=e.message;}
 };
-
-window.logout=()=>signOut(auth);
-
-onAuthStateChanged(auth,async user=>{
-me=user;
-$("auth").classList.toggle("hidden",!!user);
-$("app").classList.toggle("hidden",!user);
-if(!user)return;
-const d=await getDoc(doc(db,"users",user.uid));
-$("myName").textContent="@"+(d.data()?.username||"Kullanıcı");
-loadChats();
+onAuthStateChanged(auth,user=>{
+login.style.display=user?"none":"block";
+document.getElementById("app").style.display=user?"block":"none";
+if(user)welcome.textContent="Merhaba, "+user.email;
 });
-
-window.findUser=async()=>{
-const name=$("search").value.trim().toLowerCase();
-const q=await getDocs(query(
-collection(db,"users"),where("username","==",name)));
-$("people").innerHTML="";
-q.forEach(d=>{
-if(d.id===me.uid)return;
-const el=document.createElement("div");
-el.className="user";
-el.textContent="@"+d.data().username;
-el.onclick=()=>startChat(d.data());
-$("people").append(el);
+window.openChat=()=>{
+currentFriend=friend.value.trim().toLowerCase();
+if(!currentFriend||currentFriend===auth.currentUser.email){alert("Geçerli bir arkadaş e-postası yaz.");return;}
+chatTitle.textContent=currentFriend+" ile sohbet";
+if(unsubscribe)unsubscribe();
+const q=query(collection(db,"messages"),where("members","==",[auth.currentUser.email,currentFriend].sort().join("|")),orderBy("createdAt"));
+unsubscribe=onSnapshot(q,snapshot=>{
+messages.innerHTML="";
+snapshot.forEach(doc=>{
+const m=doc.data();
+const div=document.createElement("div");
+div.className="msg";
+div.textContent=(m.sender===auth.currentUser.email?"Sen: ":"Arkadaşın: ")+m.text;
+messages.appendChild(div);
+});
 });
 };
-
-async function startChat(u){
-const q=await getDocs(query(
-collection(db,"chats"),
-where("members","array-contains",me.uid)));
-let existing=null;
-q.forEach(d=>{
-if(d.data().members.includes(u.uid))existing=d;
-});
-if(existing){openChat(existing.id,u.username);return;}
-const mine=(await getDoc(doc(db,"users",me.uid))).data();
-const c=await addDoc(collection(db,"chats"),{
-members:[me.uid,u.uid],
-names:{[me.uid]:mine.username,[u.uid]:u.username},
-createdAt:serverTimestamp()
-});
-openChat(c.id,u.username);
-}
-
-function loadChats(){
-onSnapshot(query(collection(db,"chats"),
-where("members","array-contains",me.uid)),s=>{
-$("chats").innerHTML="";
-s.forEach(d=>{
-const other=d.data().members.find(x=>x!==me.uid);
-const el=document.createElement("div");
-el.className="user";
-el.textContent="Sohbet";
-el.onclick=()=>openChat(d.id,d.data().names?.[other]||"Kullanıcı");
-$("chats").append(el);
-});
-});
-}
-
-function openChat(id,name){
-activeChat=id;
-$("chatTitle").textContent="@"+name;
-$("message").disabled=false;
-if(stopMessages)stopMessages();
-stopMessages=onSnapshot(query(
-collection(db,"chats",id,"messages"),
-orderBy("createdAt")),s=>{
-$("messages").innerHTML="";
-s.forEach(d=>{
-const m=d.data();
-const el=document.createElement("div");
-el.className="msg "+(m.sender===me.uid?"mine":"");
-el.textContent=m.text;
-$("messages").append(el);
-});
-$("messages").scrollTop=$("messages").scrollHeight;
-});
-}
-
 window.sendMessage=async()=>{
-const text=$("message").value.trim();
-if(!text||!activeChat)return;
-$("message").value="";
-await addDoc(collection(db,"chats",activeChat,"messages"),{
-text,sender:me.uid,createdAt:serverTimestamp()
+const text=message.value.trim();
+if(!text||!currentFriend)return;
+try{
+await addDoc(collection(db,"messages"),{
+members:[auth.currentUser.email,currentFriend].sort().join("|"),
+sender:auth.currentUser.email,
+text,
+createdAt:serverTimestamp()
 });
+message.value="";
+}catch(e){alert("Mesaj gönderilemedi: "+e.message);}
 };
+window.logout=()=>signOut(auth);
 </script>
 </body>
-  </html>
+</html>
+
   
